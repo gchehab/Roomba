@@ -12,6 +12,8 @@ Resistor https://amzn.to/2EhIbsf
   Uses "A Multi-Protocol Infrared Remote Library for the Arduino":
   http://www.arcfn.com/2009/08/multi-protocol-infrared-remote-library.html
 */
+#define DEBUG
+#undef DEBUG
 
 #include <IRremote.h>
 void roomba_send(int code); 
@@ -20,47 +22,56 @@ void roomba_send(int code);
 IRsend irsend;
 int RXLED = 17;  // The RX LED has a defined Arduino pin
 int i=0;
-
+unsigned int *raw;
+int length = 8;
+  
 void setup()
 {
   // pinMode(RXLED, OUTPUT);  // Set RX LED as an output
   // TX LED is set as an output behind the scenes
 
+  #ifdef DEBUG
   Serial.begin(9600); //This pipes to the serial monitor
   Serial.println("Initialize Serial Monitor");
-
+  
   Serial1.begin(9600); //This is the UART, pipes to sensors attached to board
   Serial1.println("Initialize Serial Hardware UART Pins");
+  #endif
   irsend.enableIROut(38);//Lib function
   irsend.setSendPin(3);
+
+  raw = calloc (length*2, sizeof(unsigned int));
+  roomba_code2raw(162);
 }
 
 void loop()
 {
   //digitalWrite(RXLED, LOW);   // set the RX LED ON
   TXLED0; //TX LED is not tied to a normally controlled pin so a macro is needed, turn LED OFF
-  delay (1000);
+  //delay (1000);
 
-  roomba_send (162);
+  for (i=0; i < 15; i++)
+    roomba_send (162);
   
   //digitalWrite(RXLED, HIGH);    // set the RX LED OFF
   TXLED1; //TX LED macro to turn LED ON
-  delay (1000);
-
+  //delay (1000);
   roomba_send (162);
+
 }
 
-void roomba_send(int code) 
+void roomba_code2raw(int code) 
 {
-  Serial.print("Sending Roomba code ");
+  #ifdef DEBUG
+  Serial.print("Genratiing Roomba code ");
   Serial.print(code);
-  int length = 8;
-  unsigned int raw[length*2];
+  #endif
+  
   unsigned int one_pulse = 3000;
   unsigned int one_break = 1000;
   unsigned int zero_pulse = one_break;
   unsigned int zero_break = one_pulse;
-
+  
   int arrayposition = 0;
   // Serial.println("");
   for (int counter = length-1; counter >= 0; --counter) {
@@ -76,18 +87,28 @@ void roomba_send(int code)
     }
     arrayposition = arrayposition + 2;
   } 
+}
+
+void roomba_send(int code) 
+{
+  #ifdef DEBUG
+  Serial.print("Sending Roomba code ");
+  Serial.print(code);
+  #endif
+  
   for (int i = 0; i < 3; i++) {
     irsend.sendRaw(raw, 15, 38);
     delay(50);
   }
+
+  #ifdef DEBUG
   Serial.println("");
 
-  /*
   Serial.print("Raw timings:");
-   for (int z=0; z<length*2; z++) {
-   Serial.print(" ");
-   Serial.print(raw[z]);
-   }
-   Serial.print("\n\n");
-   */
+  for (int z=0; z<length*2; z++) {
+    Serial.print(" ");
+    Serial.print(raw[z]);
+  }
+  Serial.print("\n\n");
+  #endif
 }
